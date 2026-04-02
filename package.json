@@ -1,23 +1,61 @@
 {
-  "name": "promptForge",
+  "name": "promptforge",
   "displayName": "PromptForge",
   "description": "Evaluate, version and improve LLM prompts",
   "version": "0.0.1",
+  "publisher": "Roy-Rebuffo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Roy-Rebuffo/PromptForge"
+  },
   "engines": {
-    "vscode": "^1.110.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Machine Learning",
+    "Testing"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:prompt",
+    "onCommand:promptforge.runEval"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languages": [
+      {
+        "id": "prompt",
+        "aliases": ["Prompt", "prompt"],
+        "extensions": [".prompt"],
+        "mimetypes": ["text/plain"]
+      }
+    ],
     "commands": [
       {
-        "command": "promptForge.helloWorld",
-        "title": "Hello World"
+        "command": "promptforge.runEval",
+        "title": "PromptForge: Run Evaluation",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "promptforge.startServer",
+        "title": "PromptForge: Start Agent Server"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "promptforge.runEval",
+        "key": "ctrl+alt+e",
+        "when": "resourceExtname == '.prompt'"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "promptforge.runEval",
+          "when": "resourceExtname == '.prompt'",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -34,19 +72,20 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
-    "@types/vscode": "^1.110.0",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2",
-    "esbuild": "^0.27.3",
-    "eslint": "^9.39.3",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.7.1",
+    "@typescript-eslint/parser": "^7.7.1",
+    "@vscode/test-cli": "^0.0.9",
+    "@vscode/test-electron": "^2.3.9",
+    "esbuild": "^0.20.2",
+    "eslint": "^9.1.0",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript": "^5.4.5"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0"
+    "better-sqlite3": "^9.4.3"
   }
 }
