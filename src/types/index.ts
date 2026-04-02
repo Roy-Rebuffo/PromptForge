@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 export interface DimensionDiagnosis {
   score: number;
   reasoning: string;

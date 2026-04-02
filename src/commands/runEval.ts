@@ -8,65 +8,65 @@ export async function runEvalCommand(
   versionRepo: VersionRepository
 ): Promise<void> {
 
-  // 1. Verificar que hay un editor activo con un archivo .prompt
+  // 1. Check that there is an active editor with a .prompt file
   const editor = vscode.window.activeTextEditor;
 
   if (!editor) {
-    vscode.window.showWarningMessage('PromptForge: Abre un archivo .prompt para evaluar.');
+vscode.window.showWarningMessage('PromptForge: Open a .prompt file to evaluate.');
     return;
   }
 
   if (!editor.document.fileName.endsWith('.prompt')) {
-    vscode.window.showWarningMessage('PromptForge: Este comando solo funciona con archivos .prompt');
+    vscode.window.showWarningMessage('PromptForge: This command only works with .prompt files');
     return;
   }
 
-  // 2. Capturar el contenido en memoria (sin requerir Ctrl+S)
+  // 2. Capture the content in memory (without requiring Ctrl+S)
   const content = editor.document.getText();
   const filePath = editor.document.uri.fsPath;
 
   if (content.trim().length === 0) {
-    vscode.window.showWarningMessage('PromptForge: El archivo está vacío.');
+    vscode.window.showWarningMessage('PromptForge: The file is empty.');
     return;
   }
 
-  // 3. Guardar versión en SQLite (upsert — no crea duplicados)
+  // 3. Save version to SQLite (upsert — does not create duplicates)
   const versionId = versionRepo.upsert(filePath, content);
 
-  // 4. Mostrar progreso mientras llama al servidor Python
+  // 4. Display progress whilst calling the Python server
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: 'PromptForge: Evaluando prompt...',
+      title: 'PromptForge: Evaluating prompt...',
       cancellable: false,
     },
     async () => {
-      // 5. Verificar que el servidor Python está corriendo
+      // 5. Check that the Python server is running
       const serverReady = await checkServer();
 
       if (!serverReady) {
         vscode.window.showErrorMessage(
-          'PromptForge: El servidor de agentes no está corriendo. Ejecuta: cd agents && uvicorn main:app --port 5678'
+          'PromptForge: The agent server is not running. Run: cd agents && uvicorn main:app --port 5678'
         );
         return;
       }
 
-      // 6. Llamar al endpoint /evaluate del servidor Python
+      // 6. Call the /evaluate endpoint on the Python server
       const diagnosis = await callEvaluate(content, filePath, versionId);
 
       if (!diagnosis) {
-        vscode.window.showErrorMessage('PromptForge: Error al evaluar el prompt. Revisa la consola.');
+        vscode.window.showErrorMessage('PromptForge: Error evaluating the prompt. Check the console.');
         return;
       }
 
-      // 7. Abrir el panel Webview y enviarle el resultado
+      // 7. Open the WebView panel and send it the result
       const panel = PromptForgePanel.createOrShow(context);
       panel.sendDiagnosis(diagnosis);
     }
   );
 }
 
-// Verifica que el servidor FastAPI está corriendo
+// Check that the FastAPI server is running
 async function checkServer(): Promise<boolean> {
   try {
     const response = await fetch('http://localhost:5678/health');
@@ -76,7 +76,7 @@ async function checkServer(): Promise<boolean> {
   }
 }
 
-// Llama al endpoint /evaluate y devuelve el DiagnosisResult
+// Calls the /evaluate endpoint on the Python server and returns the DiagnosisResult
 async function callEvaluate(
   content: string,
   filePath: string,

@@ -3,45 +3,45 @@ import { VersionRepository } from './db/versionRepository';
 import { PromptForgePanel } from './panels/PromptForgePanel';
 import { runEvalCommand } from './commands/runEval';
 
-// Se ejecuta cuando VS Code activa la extensión
+// Runs when VS Code activates the extension
 export function activate(context: vscode.ExtensionContext) {
 
-  console.log('PromptForge: activando...');
+  console.log('PromptForge: activating...');
 
-  // 1. Inicializar el repositorio SQLite
-  // globalStorageUri es la carpeta privada de la extensión en el sistema
-  // En Windows: C:\Users\{user}\AppData\Roaming\Code\User\globalStorage\promptforge
+  // 1. Initialise the SQLite database
+  // globalStorageUri is the extension’s private folder on the system
+  // On Windows: C:\Users\{user}\AppData\Roaming\Code\User\globalStorage\promptforge
   const versionRepo = new VersionRepository(
     context.globalStorageUri.fsPath
   );
 
-  // 2. Registrar el comando principal
+  // 2. Register the main command
   const runEvalDisposable = vscode.commands.registerCommand(
     'promptforge.runEval',
     () => runEvalCommand(context, versionRepo)
   );
 
-  // 3. Registrar el comando de servidor (arranca el servidor Python)
+  // 3. Register the server command (starts the Python server)
   const startServerDisposable = vscode.commands.registerCommand(
     'promptforge.startServer',
     () => startPythonServer(context)
   );
 
-  // 4. Añadir los comandos al contexto para que VS Code los limpie al desactivar
+  // 4. Add the commands to the context so VS Code can clean them up on deactivation
   context.subscriptions.push(runEvalDisposable, startServerDisposable);
 
-  // 5. Verificar servidor al arrancar (sin bloquear la activación)
+  // 5. Verify server on startup (without blocking activation)
   checkServerOnStartup();
 
-  console.log('PromptForge: activa y lista.');
+  console.log('PromptForge: active and ready.');
 }
 
-// Verifica si el servidor está corriendo al activar la extensión
+// Verifies if the server is running when the extension is activated
 async function checkServerOnStartup(): Promise<void> {
   try {
     const response = await fetch('http://localhost:5678/health');
     if (response.ok) {
-      console.log('PromptForge: servidor Python detectado en puerto 5678.');
+      console.log('PromptForge: Python server detected on port 5678.');
     } else {
       showServerWarning();
     }
@@ -52,27 +52,27 @@ async function checkServerOnStartup(): Promise<void> {
 
 function showServerWarning(): void {
   vscode.window.showWarningMessage(
-    'PromptForge: El servidor de agentes no está corriendo.',
-    'Cómo arrancarlo'
+    'PromptForge: The agent server is not running.',
+    'How to start it'
   ).then(selection => {
-    if (selection === 'Cómo arrancarlo') {
+    if (selection === 'How to start it') {
       vscode.env.openExternal(
-        vscode.Uri.parse('https://github.com/tuusuario/promptforge#servidor')
+        vscode.Uri.parse('https://github.com/Roy-Rebuffo/PromptForge#server')
       );
     }
   });
 }
 
-// Arranca el servidor Python en un terminal integrado de VS Code
+// Start the Python server in a VS Code integrated terminal
 function startPythonServer(context: vscode.ExtensionContext): void {
-  const terminal = vscode.window.createTerminal('PromptForge — Agentes');
+  const terminal = vscode.window.createTerminal('PromptForge — Agents');
   terminal.show();
   terminal.sendText('cd agents');
   terminal.sendText('.venv\\Scripts\\activate');
   terminal.sendText('uvicorn main:app --port 5678 --reload');
 }
 
-// Se ejecuta cuando VS Code desactiva la extensión
+// Runs when VS Code disables the extension
 export function deactivate() {
-  console.log('PromptForge: desactivada.');
+  console.log('PromptForge: deactivated.');
 }

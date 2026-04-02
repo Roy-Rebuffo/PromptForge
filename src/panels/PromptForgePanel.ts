@@ -2,13 +2,13 @@ import * as vscode from 'vscode';
 import { DiagnosisResult, ImprovementResult, WebviewMessage } from '../types';
 
 export class PromptForgePanel {
-  // Instancia singleton — solo un panel abierto a la vez
+  // Singleton instance — only one panel open at a time
   public static currentPanel: PromptForgePanel | undefined;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _context: vscode.ExtensionContext;
   private _disposables: vscode.Disposable[] = [];
 
-  // Crea el panel si no existe, o lo enfoca si ya está abierto
+  // Create the panel if it doesn't exist, or bring it to the foreground if it's already open
   public static createOrShow(context: vscode.ExtensionContext): PromptForgePanel {
     const column = vscode.window.activeTextEditor
       ? vscode.ViewColumn.Beside
@@ -25,7 +25,7 @@ export class PromptForgePanel {
       column,
       {
         enableScripts: true,
-        retainContextWhenHidden: true, // no destruye el React cuando cambias de tab
+        retainContextWhenHidden: true, // Doesn't destroy the React instance when switching tabs
       }
     );
 
@@ -37,17 +37,17 @@ export class PromptForgePanel {
     this._panel = panel;
     this._context = context;
 
-    // Contenido inicial del panel
+    // Initial content of the panel
     this._panel.webview.html = this._getLoadingHtml();
 
-    // Escucha mensajes que vienen del React
+    // Listen for messages coming from React
     this._panel.webview.onDidReceiveMessage(
       (message: WebviewMessage) => this._handleMessage(message),
       null,
       this._disposables
     );
 
-    // Limpia cuando el dev cierra el panel
+    // Clears the panel when the developer closes it
     this._panel.onDidDispose(
       () => this.dispose(),
       null,
@@ -55,7 +55,7 @@ export class PromptForgePanel {
     );
   }
 
-  // Envía el diagnóstico al React para que lo renderice
+  // Sends the diagnostic data to React for rendering
   public sendDiagnosis(diagnosis: DiagnosisResult): void {
     this._panel.webview.postMessage({
       type: 'EVAL_COMPLETE',
@@ -63,7 +63,7 @@ export class PromptForgePanel {
     } as WebviewMessage);
   }
 
-  // Envía la mejora sugerida al React
+  // Submit the suggested improvement to React
   public sendImprovement(improvement: ImprovementResult): void {
     this._panel.webview.postMessage({
       type: 'IMPROVE_COMPLETE',
@@ -71,23 +71,23 @@ export class PromptForgePanel {
     } as WebviewMessage);
   }
 
-  // Maneja los mensajes que vienen del React hacia la extensión
+  // Handles messages that come from React to the extension
   private async _handleMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
 
       case 'IMPROVE_REQUEST': {
-        // El dev pulsó "Sugerir mejora" en el panel
+        // The developer clicked "Suggest Improvement" in the panel
         const improvement = await this._callImprove(message.payload);
         if (improvement) {
           this.sendImprovement(improvement);
         } else {
-          vscode.window.showErrorMessage('PromptForge: Error al generar la mejora.');
+          vscode.window.showErrorMessage('PromptForge: Error generating improvement.');
         }
         break;
       }
 
       case 'APPLY_IMPROVEMENT': {
-        // El dev pulsó "Aplicar" en el diff
+        // The developer clicked "Apply" in the diff
         const editor = vscode.window.activeTextEditor;
         if (!editor) { break; }
 
@@ -101,14 +101,14 @@ export class PromptForgePanel {
         });
 
         vscode.window.showInformationMessage(
-          'PromptForge: Mejora aplicada. Revisa los cambios y pulsa Run Eval para validarla.'
+          'PromptForge: Improvement applied. Review the changes and press Run Eval to validate.'
         );
         break;
       }
     }
   }
 
-  // Llama al endpoint /improve del servidor Python
+  // Calls the /improve endpoint on the Python server
   private async _callImprove(diagnosis: DiagnosisResult): Promise<ImprovementResult | null> {
     try {
       const response = await fetch('http://localhost:5678/improve', {
@@ -124,7 +124,7 @@ export class PromptForgePanel {
     }
   }
 
-  // HTML temporal mientras no tenemos el React compilado
+  // Temporary HTML whilst React hasn't been compiled yet
   private _getLoadingHtml(): string {
     return `<!DOCTYPE html>
     <html lang="es">
@@ -159,12 +159,12 @@ export class PromptForgePanel {
     </head>
     <body>
       <div class="spinner"></div>
-      <p>Esperando evaluación...</p>
+      <p>Waiting for evaluation...</p>
     </body>
     </html>`;
   }
 
-  // Limpieza cuando se cierra el panel
+  // Clean up when the panel is closed
   public dispose(): void {
     PromptForgePanel.currentPanel = undefined;
     this._panel.dispose();
