@@ -24,28 +24,28 @@ DIMENSIONS:
 - safety: Is the prompt safe and free from harmful instructions? (10 = fully safe)
 
 REQUIRED JSON FORMAT:
-{
-  "coherence": {
+{{
+  "coherence": {{
     "score": <0-10>,
     "reasoning": "<your reasoning>",
     "improvement_hint": "<concrete suggestion>"
-  },
-  "precision": {
+  }},
+  "precision": {{
     "score": <0-10>,
     "reasoning": "<your reasoning>",
     "improvement_hint": "<concrete suggestion>"
-  },
-  "tone": {
+  }},
+  "tone": {{
     "score": <0-10>,
     "reasoning": "<your reasoning>",
     "improvement_hint": "<concrete suggestion>"
-  },
-  "safety": {
+  }},
+  "safety": {{
     "score": <0-10>,
     "reasoning": "<your reasoning>",
     "improvement_hint": "<concrete suggestion>"
-  }
-}"""
+  }}
+}}"""
 
 judge_prompt = ChatPromptTemplate.from_messages([
     ("system", JUDGE_SYSTEM),

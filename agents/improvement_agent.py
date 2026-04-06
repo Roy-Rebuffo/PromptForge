@@ -13,23 +13,23 @@ Your only job is to improve prompts by fixing specific weak dimensions.
 STRICT RULES:
 1. Only modify the dimensions listed in weak_dims. Do NOT touch what is already working.
 2. For each change, document which dimension it addresses and why it improves it.
-3. Preserve all template variables like {variable} exactly as they are.
+3. Preserve all template variables like {{variable}} exactly as they are.
 4. Add no more than 2-3 changes per weak dimension.
 5. Return ONLY valid JSON — no markdown, no backticks, no preamble.
 
 REQUIRED JSON FORMAT:
-{
+{{
   "improved_prompt": "<the full rewritten prompt>",
   "changes": [
-    {
+    {{
       "line_before": "<original fragment>",
       "line_after": "<improved fragment>",
       "dimension": "<which weak dimension this fixes>",
       "explanation": "<why this change improves that dimension>"
-    }
+    }}
   ],
   "expected_score_delta": <estimated overall score improvement as float>
-}"""
+}}"""
 
 improvement_prompt = ChatPromptTemplate.from_messages([
     ("system", IMPROVEMENT_SYSTEM),
