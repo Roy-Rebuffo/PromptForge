@@ -7,6 +7,7 @@ export interface DimensionDiagnosis {
 export interface DiagnosisResult {
   version_id: number;
   prompt_content: string;
+  file_name: string;
   dimensions: {
     coherence: DimensionDiagnosis;
     precision: DimensionDiagnosis;

@@ -11,6 +11,7 @@ class DimensionDiagnosis(BaseModel):
 class DiagnosisResult(BaseModel):
     version_id: int
     prompt_content: str
+    file_name: str = ""
     dimensions: dict[str, DimensionDiagnosis]
     weak_dims: List[str]
     overall: float

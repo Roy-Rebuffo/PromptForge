@@ -103,6 +103,7 @@ def evaluate_prompt(
     return DiagnosisResult(
         version_id=version_id,
         prompt_content=prompt_content,
+        file_name=context_label,
         dimensions=dimensions,
         weak_dims=weak_dims,
         overall=overall,
