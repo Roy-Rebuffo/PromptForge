@@ -1,14 +1,15 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { DiagnosisResult, ImprovementResult, WebviewMessage } from '../types';
 
 export class PromptForgePanel {
-  // Singleton instance — only one panel open at a time
   public static currentPanel: PromptForgePanel | undefined;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _context: vscode.ExtensionContext;
   private _disposables: vscode.Disposable[] = [];
+  private _targetDocument: vscode.TextDocument | undefined;
 
-  // Create the panel if it doesn't exist, or bring it to the foreground if it's already open
   public static createOrShow(context: vscode.ExtensionContext): PromptForgePanel {
     const column = vscode.window.activeTextEditor
       ? vscode.ViewColumn.Beside
@@ -25,7 +26,10 @@ export class PromptForgePanel {
       column,
       {
         enableScripts: true,
-        retainContextWhenHidden: true, // Doesn't destroy the React instance when switching tabs
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.file(path.join(context.extensionPath, 'dist', 'webview'))
+        ],
       }
     );
 
@@ -37,17 +41,14 @@ export class PromptForgePanel {
     this._panel = panel;
     this._context = context;
 
-    // Initial content of the panel
-    this._panel.webview.html = this._getLoadingHtml();
+    this._panel.webview.html = this._getWebviewContent();
 
-    // Listen for messages coming from React
     this._panel.webview.onDidReceiveMessage(
       (message: WebviewMessage) => this._handleMessage(message),
       null,
       this._disposables
     );
 
-    // Clears the panel when the developer closes it
     this._panel.onDidDispose(
       () => this.dispose(),
       null,
@@ -55,7 +56,6 @@ export class PromptForgePanel {
     );
   }
 
-  // Sends the diagnostic data to React for rendering
   public sendDiagnosis(diagnosis: DiagnosisResult): void {
     this._panel.webview.postMessage({
       type: 'EVAL_COMPLETE',
@@ -63,7 +63,6 @@ export class PromptForgePanel {
     } as WebviewMessage);
   }
 
-  // Submit the suggested improvement to React
   public sendImprovement(improvement: ImprovementResult): void {
     this._panel.webview.postMessage({
       type: 'IMPROVE_COMPLETE',
@@ -71,12 +70,10 @@ export class PromptForgePanel {
     } as WebviewMessage);
   }
 
-  // Handles messages that come from React to the extension
   private async _handleMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
 
       case 'IMPROVE_REQUEST': {
-        // The developer clicked "Suggest Improvement" in the panel
         const improvement = await this._callImprove(message.payload);
         if (improvement) {
           this.sendImprovement(improvement);
@@ -87,9 +84,13 @@ export class PromptForgePanel {
       }
 
       case 'APPLY_IMPROVEMENT': {
-        // The developer clicked "Apply" in the diff
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) { break; }
+        const doc = this._targetDocument;
+        if (!doc) {
+          vscode.window.showErrorMessage('PromptForge: No target document found.');
+          break;
+        }
+
+        const editor = await vscode.window.showTextDocument(doc);
 
         const fullRange = new vscode.Range(
           editor.document.positionAt(0),
@@ -108,7 +109,6 @@ export class PromptForgePanel {
     }
   }
 
-  // Calls the /improve endpoint on the Python server
   private async _callImprove(diagnosis: DiagnosisResult): Promise<ImprovementResult | null> {
     try {
       const response = await fetch('http://localhost:5678/improve', {
@@ -124,51 +124,53 @@ export class PromptForgePanel {
     }
   }
 
-  // Temporary HTML whilst React hasn't been compiled yet
-  private _getLoadingHtml(): string {
+  private _getWebviewContent(): string {
+    const webviewDir = path.join(this._context.extensionPath, 'dist', 'webview');
+    const jsPath = vscode.Uri.file(path.join(webviewDir, 'main.js'));
+    const cssPath = vscode.Uri.file(path.join(webviewDir, 'main.css'));
+
+    const jsUri = this._panel.webview.asWebviewUri(jsPath);
+    const cssUri = this._panel.webview.asWebviewUri(cssPath);
+
+    const nonce = this._getNonce();
+
     return `<!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>PromptForge</title>
-      <style>
-        body {
-          font-family: var(--vscode-font-family);
-          color: var(--vscode-foreground);
-          background: var(--vscode-editor-background);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100vh;
-          margin: 0;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .spinner {
-          width: 24px;
-          height: 24px;
-          border: 2px solid var(--vscode-foreground);
-          border-top-color: transparent;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        p { font-size: 13px; opacity: 0.6; margin: 0; }
-      </style>
-    </head>
-    <body>
-      <div class="spinner"></div>
-      <p>Waiting for evaluation...</p>
-    </body>
-    </html>`;
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none';
+             style-src ${this._panel.webview.cspSource} 'unsafe-inline';
+             script-src 'nonce-${nonce}';">
+  <link rel="stylesheet" href="${cssUri}" />
+  <title>PromptForge</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script nonce="${nonce}" src="${jsUri}"></script>
+</body>
+</html>`;
   }
 
-  // Clean up when the panel is closed
+  private _getNonce(): string {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+  }
+
   public dispose(): void {
     PromptForgePanel.currentPanel = undefined;
     this._panel.dispose();
     this._disposables.forEach(d => d.dispose());
     this._disposables = [];
   }
+
+  public setTargetDocument(doc: vscode.TextDocument): void {
+    this._targetDocument = doc;
+  }
 }
+

@@ -61,6 +61,8 @@ vscode.window.showWarningMessage('PromptForge: Open a .prompt file to evaluate.'
 
       // 7. Open the WebView panel and send it the result
       const panel = PromptForgePanel.createOrShow(context);
+      panel.setTargetDocument(editor.document);
+      await new Promise(resolve => setTimeout(resolve, 1000));
       panel.sendDiagnosis(diagnosis);
     }
   );
