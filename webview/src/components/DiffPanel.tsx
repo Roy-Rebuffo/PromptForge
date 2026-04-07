@@ -5,6 +5,7 @@ const DIMENSION_COLORS: Record<string, string> = {
   precision: '#7F77DD',
   tone: '#BA7517',
   safety: '#E24B4A',
+  completeness: '#185FA5',
 };
 
 interface DiffPanelProps {

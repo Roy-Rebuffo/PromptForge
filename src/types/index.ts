@@ -13,6 +13,7 @@ export interface DiagnosisResult {
     precision: DimensionDiagnosis;
     tone: DimensionDiagnosis;
     safety: DimensionDiagnosis;
+    completeness: DimensionDiagnosis;
   };
   weak_dims: string[];
   overall: number;

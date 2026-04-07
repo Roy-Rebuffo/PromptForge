@@ -2,10 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { VersionRepository } from '../db/versionRepository';
 import { PromptForgePanel } from '../panels/PromptForgePanel';
+import { PromptTreeProvider } from '../providers/PromptTreeProvider';
 
 export async function runEvalCommand(
   context: vscode.ExtensionContext,
-  versionRepo: VersionRepository
+  versionRepo: VersionRepository,
+  treeProvider: PromptTreeProvider
 ): Promise<void> {
 
   // 1. Check that there is an active editor with a .prompt file
@@ -64,6 +66,7 @@ vscode.window.showWarningMessage('PromptForge: Open a .prompt file to evaluate.'
       panel.setTargetDocument(editor.document);
       await new Promise(resolve => setTimeout(resolve, 1000));
       panel.sendDiagnosis(diagnosis);
+      treeProvider.refresh();
     }
   );
 }

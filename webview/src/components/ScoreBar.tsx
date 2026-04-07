@@ -6,6 +6,7 @@ const DIMENSION_COLORS: Record<string, string> = {
   precision: '#7F77DD',
   tone: '#BA7517',
   safety: '#E24B4A',
+  completeness: '#185FA5',
 };
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -13,6 +14,7 @@ const DIMENSION_LABELS: Record<string, string> = {
   precision: 'Precision',
   tone: 'Tone',
   safety: 'Safety',
+  completeness: 'Completeness',
 };
 
 interface ScoreBarProps {

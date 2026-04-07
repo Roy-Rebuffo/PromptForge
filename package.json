@@ -34,6 +34,15 @@
       {
         "command": "promptforge.startServer",
         "title": "PromptForge: Start Agent Server"
+      },
+      {
+        "command": "promptforge.showVersion",
+        "title": "PromptForge: Show Version"
+      },
+      {
+        "command": "promptforge.restoreVersion",
+        "title": "PromptForge: Restore Version",
+        "icon": "$(history)"
       }
     ],
     "keybindings": [
@@ -43,12 +52,36 @@
         "when": "resourceExtname == '.prompt'"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptforge",
+          "title": "PromptForge",
+          "icon": "$(beaker)"
+        }
+      ]
+    },
+    "views": {
+      "promptforge": [
+        {
+          "id": "promptforgeHistory",
+          "name": "Version History"
+        }
+      ]
+    },
     "menus": {
       "editor/title": [
         {
           "command": "promptforge.runEval",
           "when": "resourceExtname == '.prompt'",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "promptforge.restoreVersion",
+          "when": "viewItem == promptVersion",
+          "group": "inline"
         }
       ]
     }
