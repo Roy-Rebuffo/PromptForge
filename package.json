@@ -47,6 +47,10 @@
         "command": "promptforge.restoreVersion",
         "title": "PromptForge: Restore Version",
         "icon": "$(history)"
+      },
+      {
+        "command": "promptforge.evaluateAsPrompt",
+        "title": "PromptForge: Evaluate as prompt"
       }
     ],
     "keybindings": [
@@ -86,6 +90,19 @@
           "command": "promptforge.restoreVersion",
           "when": "viewItem == promptVersion",
           "group": "inline"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "promptforge.evaluateAsPrompt",
+          "group": "promptforge"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "promptforge.evaluateAsPrompt",
+          "when": "resourceScheme == file",
+          "group": "promptforge"
         }
       ]
     },

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { VersionRepository } from './db/versionRepository';
-import { runEvalCommand } from './commands/runEval';
+import { runEvalCommand, evaluateAsPromptCommand } from './commands/runEval';
 import { PromptTreeProvider } from './providers/PromptTreeProvider';
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -78,11 +78,18 @@ export async function activate(context: vscode.ExtensionContext) {
       () => runEvalCommand(context, versionRepo, treeProvider)
     );
 
+    // 7. Register evaluate as prompt command (context menu for any file)
+    const evaluateAsPromptDisposable = vscode.commands.registerCommand(
+      'promptforge.evaluateAsPrompt',
+      (uri?: vscode.Uri) => evaluateAsPromptCommand(context, versionRepo, treeProvider, uri)
+    );
+
     context.subscriptions.push(
       treeView,
       runEvalDisposable,
       showVersionDisposable,
       restoreVersionDisposable,
+      evaluateAsPromptDisposable,
     );
 
     console.log('PromptForge: active and ready.');

@@ -3,6 +3,7 @@ import * as path from 'path';
 import { DiagnosisResult, ImprovementResult, WebviewMessage } from '../types';
 import { selectBestModel } from '../agents/modelSelector';
 import { improvePrompt } from '../agents/improvementAgent';
+import { ParsedPrompt } from '../utils/promptParser';
 
 export class PromptForgePanel {
   public static currentPanel: PromptForgePanel | undefined;
@@ -10,6 +11,7 @@ export class PromptForgePanel {
   private readonly _context: vscode.ExtensionContext;
   private _disposables: vscode.Disposable[] = [];
   private _targetDocument: vscode.TextDocument | undefined;
+  private _promptStructure: ParsedPrompt | undefined;
 
   public static createOrShow(context: vscode.ExtensionContext): PromptForgePanel {
     const column = vscode.window.activeTextEditor
@@ -60,6 +62,21 @@ export class PromptForgePanel {
   public setTargetDocument(doc: vscode.TextDocument): void {
     this._targetDocument = doc;
   }
+
+  public setPromptStructure(parsed: ParsedPrompt): void {
+  this._promptStructure = parsed;
+  // Send structure info to the Webview
+  this._panel.webview.postMessage({
+    type: 'PROMPT_STRUCTURE',
+    payload: {
+      hasSections: parsed.hasSections,
+      sections: parsed.sections.map(s => ({
+        tag: s.tag,
+        lineCount: s.endLine - s.startLine + 1,
+      })),
+    },
+  });
+}
 
   public sendDiagnosis(diagnosis: DiagnosisResult): void {
     this._panel.webview.postMessage({

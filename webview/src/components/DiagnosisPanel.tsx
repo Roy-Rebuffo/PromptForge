@@ -94,27 +94,7 @@ export function DiagnosisPanel({ diagnosis, isImproving, onImproveRequest }: Dia
                 ))}
             </div>
 
-            {/* Suggest improvement button */}
-            {diagnosis.overall < 8 && (
-                <button
-                    onClick={() => onImproveRequest()}
-                    disabled={isImproving}
-                    style={{
-                        width: '100%',
-                        padding: '8px 0',
-                        background: isImproving ? 'var(--vscode-panel-border)' : 'var(--vscode-button-background)',
-                        color: 'var(--vscode-button-foreground)',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontSize: 13,
-                        cursor: isImproving ? 'not-allowed' : 'pointer',
-                        fontWeight: 500,
-                    }}
-                >
-                    {isImproving ? 'Generating improvement...' : 'Suggest improvement'}
-                </button>
-            )}
-
+            {/* Always visible suggest improvement button */}
             {diagnosis.overall >= 8 && (
                 <div style={{
                     textAlign: 'center',
@@ -125,6 +105,24 @@ export function DiagnosisPanel({ diagnosis, isImproving, onImproveRequest }: Dia
                     Prompt is performing well — keep iterating to reach 10
                 </div>
             )}
+
+            <button
+                onClick={() => onImproveRequest()}
+                disabled={isImproving}
+                style={{
+                    width: '100%',
+                    padding: '8px 0',
+                    background: isImproving ? 'var(--vscode-panel-border)' : 'var(--vscode-button-background)',
+                    color: 'var(--vscode-button-foreground)',
+                    border: 'none',
+                    borderRadius: 4,
+                    fontSize: 13,
+                    cursor: isImproving ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                }}
+            >
+                {isImproving ? 'Generating improvement...' : 'Suggest improvement'}
+            </button>
         </div>
     );
 }
