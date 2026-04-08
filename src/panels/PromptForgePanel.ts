@@ -111,15 +111,39 @@ export class PromptForgePanel {
 
   private async _callImprove(diagnosis: DiagnosisResult): Promise<ImprovementResult | null> {
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
       const response = await fetch('http://localhost:5678/improve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(diagnosis),
+        signal: controller.signal,
       });
 
-      if (!response.ok) { return null; }
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('PromptForge improve error:', error);
+        vscode.window.showErrorMessage(
+          `PromptForge: Improvement failed — ${response.status} ${response.statusText}`
+        );
+        return null;
+      }
+
       return await response.json() as ImprovementResult;
-    } catch {
+
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        vscode.window.showErrorMessage(
+          'PromptForge: Improvement timed out after 30 seconds. Check the agent server.'
+        );
+      } else {
+        vscode.window.showErrorMessage(
+          'PromptForge: Could not reach the agent server. Use "PromptForge: Start Agent Server" to start it.'
+        );
+      }
       return null;
     }
   }

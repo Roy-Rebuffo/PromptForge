@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { VersionRepository } from './db/versionRepository';
 import { runEvalCommand } from './commands/runEval';
 import { PromptTreeProvider } from './providers/PromptTreeProvider';
+import * as path from 'path';
 
 async function checkServerOnStartup(): Promise<void> {
   try {
@@ -29,12 +30,42 @@ function showServerWarning(): void {
   });
 }
 
-function startPythonServer(context: vscode.ExtensionContext): void {
-  const terminal = vscode.window.createTerminal('PromptForge — Agents');
+async function startPythonServer(context: vscode.ExtensionContext): Promise<void> {
+  // Check if server is already running
+  try {
+    const response = await fetch('http://localhost:5678/health');
+    if (response.ok) {
+      vscode.window.showInformationMessage(
+        'PromptForge: Agent server is already running on port 5678.'
+      );
+      return;
+    }
+  } catch {
+    // Server not running, proceed to start it
+  }
+
+  // Find the agents folder relative to the workspace
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    vscode.window.showErrorMessage('PromptForge: No workspace folder found.');
+    return;
+  }
+
+  const agentsPath = path.join(workspaceFolders[0].uri.fsPath, 'agents');
+  const venvActivate = path.join(agentsPath, '.venv', 'Scripts', 'activate');
+
+  const terminal = vscode.window.createTerminal({
+    name: 'PromptForge — Agents',
+    cwd: agentsPath,
+  });
+
   terminal.show();
-  terminal.sendText('cd agents');
-  terminal.sendText('.venv\\Scripts\\activate');
+  terminal.sendText(`& "${venvActivate}"`);
   terminal.sendText('uvicorn main:app --port 5678 --reload');
+
+  vscode.window.showInformationMessage(
+    'PromptForge: Starting agent server on port 5678...'
+  );
 }
 
 export async function activate(context: vscode.ExtensionContext) {

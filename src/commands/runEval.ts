@@ -88,6 +88,9 @@ async function callEvaluate(
   versionId: number
 ): Promise<any | null> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     const response = await fetch('http://localhost:5678/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -96,16 +99,32 @@ async function callEvaluate(
         context_label: path.basename(filePath, '.prompt'),
         version_id: versionId,
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
     if (!response.ok) {
-      console.error('PromptForge evaluate error:', await response.text());
+      const error = await response.text();
+      console.error('PromptForge evaluate error:', error);
+      vscode.window.showErrorMessage(
+        `PromptForge: Evaluation failed — ${response.status} ${response.statusText}`
+      );
       return null;
     }
 
     return await response.json();
-  } catch (error) {
-    console.error('PromptForge fetch error:', error);
+
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      vscode.window.showErrorMessage(
+        'PromptForge: Evaluation timed out after 30 seconds. Check the agent server.'
+      );
+    } else {
+      vscode.window.showErrorMessage(
+        'PromptForge: Could not reach the agent server. Use "PromptForge: Start Agent Server" to start it.'
+      );
+    }
     return null;
   }
 }
