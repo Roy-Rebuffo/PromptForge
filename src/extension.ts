@@ -1,72 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { VersionRepository } from './db/versionRepository';
 import { runEvalCommand } from './commands/runEval';
 import { PromptTreeProvider } from './providers/PromptTreeProvider';
-import * as path from 'path';
-
-async function checkServerOnStartup(): Promise<void> {
-  try {
-    const response = await fetch('http://localhost:5678/health');
-    if (response.ok) {
-      console.log('PromptForge: Python server detected on port 5678.');
-    } else {
-      showServerWarning();
-    }
-  } catch {
-    showServerWarning();
-  }
-}
-
-function showServerWarning(): void {
-  vscode.window.showWarningMessage(
-    'PromptForge: The agent server is not running.',
-    'How to start it'
-  ).then(selection => {
-    if (selection === 'How to start it') {
-      vscode.env.openExternal(
-        vscode.Uri.parse('https://github.com/Roy-Rebuffo/PromptForge#server')
-      );
-    }
-  });
-}
-
-async function startPythonServer(context: vscode.ExtensionContext): Promise<void> {
-  // Check if server is already running
-  try {
-    const response = await fetch('http://localhost:5678/health');
-    if (response.ok) {
-      vscode.window.showInformationMessage(
-        'PromptForge: Agent server is already running on port 5678.'
-      );
-      return;
-    }
-  } catch {
-    // Server not running, proceed to start it
-  }
-
-  // Find the agents folder relative to the workspace
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders) {
-    vscode.window.showErrorMessage('PromptForge: No workspace folder found.');
-    return;
-  }
-
-  const agentsPath = path.join(workspaceFolders[0].uri.fsPath, 'agents');
-  const venvActivate = path.join(agentsPath, '.venv', 'Scripts', 'activate');
-
-  const terminal = vscode.window.createTerminal({
-    name: 'PromptForge — Agents',
-    cwd: agentsPath,
-  });
-
-  terminal.show();
-  terminal.sendText(`& "${venvActivate}"`);
-  terminal.sendText('uvicorn main:app --port 5678 --reload');
-
-  vscode.window.showInformationMessage(
-    'PromptForge: Starting agent server on port 5678...'
-  );
-}
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log('PromptForge: activating...');
@@ -86,7 +22,7 @@ export async function activate(context: vscode.ExtensionContext) {
       showCollapseAll: true,
     });
 
-    // 3. Refresh tree when a .prompt file is opened or closed
+    // 3. Refresh tree when .prompt files open or close
     vscode.workspace.onDidOpenTextDocument(doc => {
       if (doc.fileName.endsWith('.prompt')) {
         treeProvider.refresh();
@@ -99,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }, null, context.subscriptions);
 
-    // 4. Register showVersion command — opens version in editor
+    // 4. Register showVersion command
     const showVersionDisposable = vscode.commands.registerCommand(
       'promptforge.showVersion',
       async (version) => {
@@ -136,26 +72,18 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     );
 
-    // 6. Register main commands
+    // 6. Register main command
     const runEvalDisposable = vscode.commands.registerCommand(
       'promptforge.runEval',
       () => runEvalCommand(context, versionRepo, treeProvider)
     );
 
-    const startServerDisposable = vscode.commands.registerCommand(
-      'promptforge.startServer',
-      () => startPythonServer(context)
-    );
-
     context.subscriptions.push(
       treeView,
       runEvalDisposable,
-      startServerDisposable,
       showVersionDisposable,
-      restoreVersionDisposable
+      restoreVersionDisposable,
     );
-
-    checkServerOnStartup();
 
     console.log('PromptForge: active and ready.');
 

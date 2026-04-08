@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import { DiagnosisResult, ImprovementResult, WebviewMessage } from '../types';
+import { selectBestModel } from '../agents/modelSelector';
+import { improvePrompt } from '../agents/improvementAgent';
 
 export class PromptForgePanel {
   public static currentPanel: PromptForgePanel | undefined;
@@ -56,6 +57,10 @@ export class PromptForgePanel {
     );
   }
 
+  public setTargetDocument(doc: vscode.TextDocument): void {
+    this._targetDocument = doc;
+  }
+
   public sendDiagnosis(diagnosis: DiagnosisResult): void {
     this._panel.webview.postMessage({
       type: 'EVAL_COMPLETE',
@@ -74,11 +79,36 @@ export class PromptForgePanel {
     switch (message.type) {
 
       case 'IMPROVE_REQUEST': {
-        const improvement = await this._callImprove(message.payload);
-        if (improvement) {
-          this.sendImprovement(improvement);
-        } else {
-          vscode.window.showErrorMessage('PromptForge: Error generating improvement.');
+        const cancellationSource = new vscode.CancellationTokenSource();
+
+        try {
+          // Select best available model
+          const selectedModel = await selectBestModel(cancellationSource.token);
+          if (!selectedModel) { break; }
+
+          await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: `PromptForge: Generating improvement with ${selectedModel.modelName}...`,
+              cancellable: false,
+            },
+            async () => {
+              const improvement = await improvePrompt(
+                selectedModel,
+                message.payload,
+                cancellationSource.token
+              );
+              this.sendImprovement(improvement);
+            }
+          );
+
+        } catch (error: any) {
+          console.error('PromptForge improvement error:', error);
+          vscode.window.showErrorMessage(
+            `PromptForge: Improvement failed — ${error.message}`
+          );
+        } finally {
+          cancellationSource.dispose();
         }
         break;
       }
@@ -90,7 +120,7 @@ export class PromptForgePanel {
           break;
         }
 
-        const editor = await vscode.window.showTextDocument(doc);
+        const editor = await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
 
         const fullRange = new vscode.Range(
           editor.document.positionAt(0),
@@ -106,45 +136,6 @@ export class PromptForgePanel {
         );
         break;
       }
-    }
-  }
-
-  private async _callImprove(diagnosis: DiagnosisResult): Promise<ImprovementResult | null> {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch('http://localhost:5678/improve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(diagnosis),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('PromptForge improve error:', error);
-        vscode.window.showErrorMessage(
-          `PromptForge: Improvement failed — ${response.status} ${response.statusText}`
-        );
-        return null;
-      }
-
-      return await response.json() as ImprovementResult;
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        vscode.window.showErrorMessage(
-          'PromptForge: Improvement timed out after 30 seconds. Check the agent server.'
-        );
-      } else {
-        vscode.window.showErrorMessage(
-          'PromptForge: Could not reach the agent server. Use "PromptForge: Start Agent Server" to start it.'
-        );
-      }
-      return null;
     }
   }
 
@@ -192,9 +183,4 @@ export class PromptForgePanel {
     this._disposables.forEach(d => d.dispose());
     this._disposables = [];
   }
-
-  public setTargetDocument(doc: vscode.TextDocument): void {
-    this._targetDocument = doc;
-  }
 }
-

@@ -2,6 +2,7 @@
   "name": "promptforge",
   "displayName": "PromptForge",
   "description": "Evaluate, version and improve LLM prompts",
+  "icon": "icon.png",
   "version": "0.0.1",
   "publisher": "Roy-Rebuffo",
   "repository": {
@@ -9,7 +10,7 @@
     "url": "https://github.com/Roy-Rebuffo/PromptForge"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Machine Learning",
@@ -30,10 +31,6 @@
         "command": "promptforge.runEval",
         "title": "PromptForge: Run Evaluation",
         "icon": "$(beaker)"
-      },
-      {
-        "command": "promptforge.startServer",
-        "title": "PromptForge: Start Agent Server"
       },
       {
         "command": "promptforge.showVersion",
@@ -84,6 +81,16 @@
           "group": "inline"
         }
       ]
+    },
+    "configuration": {
+      "title": "PromptForge",
+      "properties": {
+        "promptforge.groqApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Groq API key for PromptForge (fallback when no vscode.lm model is available). Get your free key at https://console.groq.com"
+        }
+      }
     }
   },
   "scripts": {
@@ -104,7 +111,7 @@
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
     "@types/sql.js": "^1.4.11",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^7.7.1",
     "@typescript-eslint/parser": "^7.7.1",
     "@vscode/test-cli": "^0.0.9",
