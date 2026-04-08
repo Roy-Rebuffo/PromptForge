@@ -114,7 +114,7 @@ export async function evaluateAsPromptCommand(
 
   const rawContent = document.getText();
   const filePath = document.uri.fsPath;
-  const contextLabel = path.basename(filePath);
+  const contextLabel = path.basename(filePath, path.extname(filePath));
 
   if (rawContent.trim().length === 0) {
     vscode.window.showWarningMessage('PromptForge: The file is empty.');
@@ -155,7 +155,8 @@ export async function evaluateAsPromptCommand(
           contentToEvaluate,
           contextLabel,
           versionId,
-          cancellationSource.token
+          cancellationSource.token,
+          parsed.hasSections
         );
 
         await new Promise(resolve => setTimeout(resolve, 1000));

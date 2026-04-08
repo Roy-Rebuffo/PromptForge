@@ -35,6 +35,37 @@ REQUIRED JSON FORMAT:
   "completeness": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" }
 }`;
 
+const JUDGE_SYSTEM_PROMPT_DEVELOPER = `You are a strict expert LLM prompt evaluator specialised in production-grade prompts.
+You will receive a structured prompt with sections ([SYSTEM], [USER], [CONTEXT]) and must evaluate it across 5 dimensions.
+
+STRICT INSTRUCTIONS:
+1. Evaluate the prompt AS A WHOLE considering how sections work together.
+2. Be HARSH and PRECISE — production prompts must meet high standards.
+3. Return ONLY valid JSON — no markdown, no backticks, no preamble.
+
+DIMENSIONS FOR STRUCTURED PROMPTS:
+- coherence: Do the sections work together coherently? Does [SYSTEM] define a clear role? Does [USER] have a clear task? Score 0-2 if sections contradict each other or lack clear purpose.
+- precision: Are instructions specific enough to produce consistent outputs? Are template variables {like_this} used correctly? Are constraints explicit?
+- tone: Is the tone consistent across sections and appropriate for the declared role?
+- safety: Is the prompt free from harmful instructions across all sections? (10 = fully safe)
+- completeness: Does [SYSTEM] define the role? Does [USER] specify the task AND output format? Are edge cases handled? Missing output format scores max 6.
+
+SCORING GUIDE:
+- 0-2: Completely inadequate
+- 3-4: Poor — missing critical elements
+- 5-6: Below average — structure present but gaps remain
+- 7-8: Good — production-ready with minor improvements possible
+- 9-10: Excellent — robust, specific, handles edge cases
+
+REQUIRED JSON FORMAT:
+{
+  "coherence": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" },
+  "precision": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" },
+  "tone": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" },
+  "safety": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" },
+  "completeness": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" }
+}`;
+
 function parseJudgeResponse(raw: string, promptContent: string, contextLabel: string, versionId: number): DiagnosisResult {
   // Clean up response
   let cleaned = raw.trim();
@@ -85,11 +116,12 @@ async function evaluateWithVscodeLm(
   promptContent: string,
   contextLabel: string,
   versionId: number,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  systemPrompt: string  // añade este parámetro
 ): Promise<DiagnosisResult> {
 
   const messages = [
-    vscode.LanguageModelChatMessage.User(JUDGE_SYSTEM_PROMPT),
+    vscode.LanguageModelChatMessage.User(systemPrompt),
     vscode.LanguageModelChatMessage.User(
       `Context: ${contextLabel}\n\nPrompt to evaluate:\n${promptContent}`
     ),
@@ -111,7 +143,8 @@ async function evaluateWithGroq(
   promptContent: string,
   contextLabel: string,
   versionId: number,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  systemPrompt: string  // añade este parámetro
 ): Promise<DiagnosisResult> {
 
   const controller = new AbortController();
@@ -128,7 +161,7 @@ async function evaluateWithGroq(
       temperature: 0,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: JUDGE_SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: `Context: ${contextLabel}\n\nPrompt to evaluate:\n${promptContent}` },
       ],
     }),
@@ -151,8 +184,14 @@ export async function evaluatePrompt(
   promptContent: string,
   contextLabel: string,
   versionId: number,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  isDeveloperPrompt: boolean = false  // añade este parámetro
 ): Promise<DiagnosisResult> {
+
+  // Choose the right system prompt
+  const systemPrompt = isDeveloperPrompt
+    ? JUDGE_SYSTEM_PROMPT_DEVELOPER
+    : JUDGE_SYSTEM_PROMPT;
 
   if (selectedModel.source === 'vscode-lm' && selectedModel.model) {
     return evaluateWithVscodeLm(
@@ -160,7 +199,8 @@ export async function evaluatePrompt(
       promptContent,
       contextLabel,
       versionId,
-      token
+      token,
+      systemPrompt
     );
   }
 
@@ -170,7 +210,8 @@ export async function evaluatePrompt(
       promptContent,
       contextLabel,
       versionId,
-      token
+      token,
+      systemPrompt
     );
   }
 
