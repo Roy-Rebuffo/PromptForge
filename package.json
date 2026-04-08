@@ -1,6 +1,6 @@
 {
-  "name": "promptforge",
-  "displayName": "PromptForge",
+  "name": "promptforge-devtools",
+  "displayName": "PromptForgeLLM",
   "description": "Evaluate, version and improve LLM prompts",
   "icon": "icon.png",
   "version": "0.0.1",
@@ -21,9 +21,16 @@
     "languages": [
       {
         "id": "prompt",
-        "aliases": ["Prompt", "prompt"],
-        "extensions": [".prompt"],
-        "mimetypes": ["text/plain"]
+        "aliases": [
+          "Prompt",
+          "prompt"
+        ],
+        "extensions": [
+          ".prompt"
+        ],
+        "mimetypes": [
+          "text/plain"
+        ]
       }
     ],
     "commands": [
@@ -119,7 +126,8 @@
     "esbuild": "^0.20.2",
     "eslint": "^9.1.0",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.58.1"
   },
   "dependencies": {
     "sql.js": "^1.14.1"
