@@ -4,7 +4,7 @@ import { ScoreBar } from './ScoreBar';
 interface DiagnosisPanelProps {
     diagnosis: DiagnosisResult;
     isImproving: boolean;
-    onImproveRequest: () => void;
+    onImproveRequest: (targetDim?: string) => void;
 }
 
 const OVERALL_COLOR = (score: number) => {
@@ -88,6 +88,8 @@ export function DiagnosisPanel({ diagnosis, isImproving, onImproveRequest }: Dia
                         dimension={dim}
                         data={data}
                         isWeak={diagnosis.weak_dims.includes(dim)}
+                        onImproveDimension={(d) => onImproveRequest(d)}
+                        isImproving={isImproving}
                     />
                 ))}
             </div>
@@ -95,7 +97,7 @@ export function DiagnosisPanel({ diagnosis, isImproving, onImproveRequest }: Dia
             {/* Suggest improvement button */}
             {diagnosis.overall < 8 && (
                 <button
-                    onClick={onImproveRequest}
+                    onClick={() => onImproveRequest()}
                     disabled={isImproving}
                     style={{
                         width: '100%',
@@ -116,11 +118,11 @@ export function DiagnosisPanel({ diagnosis, isImproving, onImproveRequest }: Dia
             {diagnosis.overall >= 8 && (
                 <div style={{
                     textAlign: 'center',
-                    fontSize: 12,
+                    fontSize: 11,
                     color: '#1D9E75',
-                    padding: 8,
+                    padding: '4px 0 8px',
                 }}>
-                    Prompt is performing well — no improvements needed
+                    Prompt is performing well — keep iterating to reach 10
                 </div>
             )}
         </div>

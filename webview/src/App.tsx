@@ -42,14 +42,15 @@ export default function App() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  function handleImproveRequest() {
-    if (!diagnosis) { return; }
-    setState('improving');
-    vscode.postMessage({
-      type: 'IMPROVE_REQUEST',
-      payload: diagnosis,
-    });
-  }
+  function handleImproveRequest(targetDim?: string) {
+  if (!diagnosis) { return; }
+  setState('improving');
+  vscode.postMessage({
+    type: 'IMPROVE_REQUEST',
+    payload: diagnosis,
+    target_dim: targetDim,
+  } as any);
+}
 
   function handleDiscard() {
     setState('diagnosed');

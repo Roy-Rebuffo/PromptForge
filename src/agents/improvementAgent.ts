@@ -26,23 +26,36 @@ REQUIRED JSON FORMAT:
   "expected_score_delta": <estimated overall score improvement as float>
 }`;
 
-function buildImprovementUserMessage(diagnosis: DiagnosisResult): string {
-  const weakDimsDetail = diagnosis.weak_dims.map(dim => {
+function buildImprovementUserMessage(
+  diagnosis: DiagnosisResult,
+  targetDim?: string
+): string {
+  const dimsToImprove = targetDim
+    ? [targetDim]
+    : diagnosis.weak_dims;
+
+  const weakDimsDetail = dimsToImprove.map(dim => {
     const d = diagnosis.dimensions[dim as keyof typeof diagnosis.dimensions];
     return `- ${dim} (score ${d.score}/10): ${d.improvement_hint}`;
   }).join('\n');
 
   const strongDims = Object.keys(diagnosis.dimensions)
-    .filter(dim => !diagnosis.weak_dims.includes(dim))
+    .filter(dim => !dimsToImprove.includes(dim))
     .join(', ') || 'none';
 
-  return `Original prompt:
+  const focus = targetDim
+    ? `IMPORTANT: Only improve the "${targetDim}" dimension. Do NOT touch any other dimension.`
+    : `Improve all weak dimensions listed below.`;
+
+  return `${focus}
+
+Original prompt:
 ${diagnosis.prompt_content}
 
-Dimensions to improve (score < 7):
+Dimensions to improve:
 ${weakDimsDetail}
 
-Do NOT modify these dimensions (already scoring well):
+Do NOT modify these dimensions:
 ${strongDims}`;
 }
 
@@ -77,16 +90,16 @@ function parseImprovementResponse(
   };
 }
 
-// Call improvement agent using vscode.lm
 async function improveWithVscodeLm(
   model: vscode.LanguageModelChat,
   diagnosis: DiagnosisResult,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  targetDim?: string
 ): Promise<ImprovementResult> {
 
   const messages = [
     vscode.LanguageModelChatMessage.User(IMPROVEMENT_SYSTEM_PROMPT),
-    vscode.LanguageModelChatMessage.User(buildImprovementUserMessage(diagnosis)),
+    vscode.LanguageModelChatMessage.User(buildImprovementUserMessage(diagnosis, targetDim)),
   ];
 
   const response = await model.sendRequest(messages, {}, token);
@@ -99,11 +112,11 @@ async function improveWithVscodeLm(
   return parseImprovementResponse(raw, diagnosis);
 }
 
-// Call improvement agent using Groq API directly
 async function improveWithGroq(
   apiKey: string,
   diagnosis: DiagnosisResult,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  targetDim?: string
 ): Promise<ImprovementResult> {
 
   const controller = new AbortController();
@@ -121,7 +134,7 @@ async function improveWithGroq(
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: IMPROVEMENT_SYSTEM_PROMPT },
-        { role: 'user', content: buildImprovementUserMessage(diagnosis) },
+        { role: 'user', content: buildImprovementUserMessage(diagnosis, targetDim) },
       ],
     }),
     signal: controller.signal,
@@ -137,19 +150,19 @@ async function improveWithGroq(
   return parseImprovementResponse(raw, diagnosis);
 }
 
-// Main export — routes to the right implementation
 export async function improvePrompt(
   selectedModel: SelectedModel,
   diagnosis: DiagnosisResult,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  targetDim?: string
 ): Promise<ImprovementResult> {
 
   if (selectedModel.source === 'vscode-lm' && selectedModel.model) {
-    return improveWithVscodeLm(selectedModel.model, diagnosis, token);
+    return improveWithVscodeLm(selectedModel.model, diagnosis, token, targetDim);
   }
 
   if (selectedModel.source === 'groq' && selectedModel.apiKey) {
-    return improveWithGroq(selectedModel.apiKey, diagnosis, token);
+    return improveWithGroq(selectedModel.apiKey, diagnosis, token, targetDim);
   }
 
   throw new Error('No valid model source available');

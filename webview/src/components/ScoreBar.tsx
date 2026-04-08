@@ -21,9 +21,11 @@ interface ScoreBarProps {
   dimension: string;
   data: DimensionDiagnosis;
   isWeak: boolean;
+  onImproveDimension: (dim: string) => void;
+  isImproving: boolean;
 }
 
-export function ScoreBar({ dimension, data, isWeak }: ScoreBarProps) {
+export function ScoreBar({ dimension, data, isWeak, onImproveDimension, isImproving }: ScoreBarProps) {
   const [expanded, setExpanded] = useState(false);
   const color = DIMENSION_COLORS[dimension] ?? '#888';
   const label = DIMENSION_LABELS[dimension] ?? dimension;
@@ -59,7 +61,6 @@ export function ScoreBar({ dimension, data, isWeak }: ScoreBarProps) {
           {label}
         </span>
 
-        {/* Progress bar */}
         <div style={{
           flex: 1,
           height: 6,
@@ -123,17 +124,40 @@ export function ScoreBar({ dimension, data, isWeak }: ScoreBarProps) {
           }}>
             {data.reasoning}
           </p>
-          {isWeak && (
+
+          {data.improvement_hint && (
             <p style={{
               fontSize: 11,
               color,
-              margin: 0,
+              margin: '0 0 10px',
               fontStyle: 'italic',
               lineHeight: 1.4,
             }}>
               Suggestion: {data.improvement_hint}
             </p>
           )}
+
+          {/* Improve this dimension button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onImproveDimension(dimension);
+            }}
+            disabled={isImproving}
+            style={{
+              width: '100%',
+              padding: '5px 0',
+              background: 'transparent',
+              color: isImproving ? 'var(--vscode-descriptionForeground)' : color,
+              border: `1px solid ${isImproving ? 'var(--vscode-panel-border)' : color}`,
+              borderRadius: 4,
+              fontSize: 11,
+              cursor: isImproving ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            {isImproving ? 'Generating...' : `Improve ${label}`}
+          </button>
         </div>
       )}
     </div>

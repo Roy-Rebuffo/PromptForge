@@ -80,9 +80,9 @@ export class PromptForgePanel {
 
       case 'IMPROVE_REQUEST': {
         const cancellationSource = new vscode.CancellationTokenSource();
+        const targetDim = (message as any).target_dim as string | undefined;
 
         try {
-          // Select best available model
           const selectedModel = await selectBestModel(cancellationSource.token);
           if (!selectedModel) { break; }
 
@@ -96,7 +96,8 @@ export class PromptForgePanel {
               const improvement = await improvePrompt(
                 selectedModel,
                 message.payload,
-                cancellationSource.token
+                cancellationSource.token,
+                targetDim
               );
               this.sendImprovement(improvement);
             }

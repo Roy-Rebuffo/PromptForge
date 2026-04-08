@@ -37,7 +37,7 @@ export interface ImprovementResult {
 export type WebviewMessage =
   | { type: 'EVAL_COMPLETE'; payload: DiagnosisResult }
   | { type: 'IMPROVE_COMPLETE'; payload: ImprovementResult }
-  | { type: 'IMPROVE_REQUEST'; payload: DiagnosisResult }
+  | { type: 'IMPROVE_REQUEST'; payload: DiagnosisResult; target_dim?: string }
   | { type: 'APPLY_IMPROVEMENT'; payload: { content: string } }
   | { type: 'ERROR'; payload: { message: string } };
 
