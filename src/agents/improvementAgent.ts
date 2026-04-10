@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { DiagnosisResult, ImprovementResult, PromptChange } from '../types';
 import { SelectedModel } from './modelSelector';
+import { QuotaExceededError } from './judgeAgent';
 
 const IMPROVEMENT_SYSTEM_PROMPT = `You are an expert prompt engineer specialised in surgical improvements.
 Your only job is to improve prompts by fixing specific weak dimensions.
@@ -59,21 +60,49 @@ Do NOT modify these dimensions:
 ${strongDims}`;
 }
 
+function extractJsonFromResponse(raw: string): string {
+  let cleaned = raw.trim();
+
+  // Extract content from markdown code block (handles ```json ... ``` and ``` ... ```)
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1].trim();
+  }
+
+  // Find the outermost JSON object
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}') + 1;
+  if (start !== -1 && end > start) {
+    return cleaned.slice(start, end);
+  }
+
+  return cleaned;
+}
+
+/** Remove trailing commas before } or ] — some models emit non-strict JSON. */
+function sanitizeJson(json: string): string {
+  return json.replace(/,(\s*[}\]])/g, '$1');
+}
+
 function parseImprovementResponse(
   raw: string,
   diagnosis: DiagnosisResult
 ): ImprovementResult {
-  let cleaned = raw.trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.split('```').filter(s => s.trim() && !s.startsWith('json'))[0] ?? cleaned;
-  }
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}') + 1;
-  if (start !== -1 && end > start) {
-    cleaned = cleaned.slice(start, end);
-  }
+  const cleaned = extractJsonFromResponse(raw);
 
-  const data = JSON.parse(cleaned);
+  let data: any;
+  try {
+    data = JSON.parse(cleaned);
+  } catch {
+    // Second attempt: sanitize common model JSON quirks (trailing commas, etc.)
+    try {
+      data = JSON.parse(sanitizeJson(cleaned));
+    } catch {
+      console.error('PromptForge: Failed to parse improvement response.');
+      console.error('Raw response:', raw);
+      throw new Error('Model returned an invalid response (could not parse JSON). Try a different model.');
+    }
+  }
 
   const changes: PromptChange[] = (data.changes ?? []).map((c: any) => ({
     line_before: String(c.line_before ?? ''),
@@ -102,14 +131,26 @@ async function improveWithVscodeLm(
     vscode.LanguageModelChatMessage.User(buildImprovementUserMessage(diagnosis, targetDim)),
   ];
 
-  const response = await model.sendRequest(messages, {}, token);
+  try {
+    const response = await model.sendRequest(messages, {}, token);
 
-  let raw = '';
-  for await (const chunk of response.text) {
-    raw += chunk;
+    let raw = '';
+    for await (const chunk of response.text) {
+      raw += chunk;
+    }
+
+    return parseImprovementResponse(raw, diagnosis);
+
+  } catch (error: any) {
+    if (
+      error.name === 'ChatQuotaExceeded' ||
+      error.message?.includes('quota') ||
+      error.message?.includes('monthly chat messages')
+    ) {
+      throw new QuotaExceededError(model.family);
+    }
+    throw error;
   }
-
-  return parseImprovementResponse(raw, diagnosis);
 }
 
 async function improveWithGroq(

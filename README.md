@@ -1,5 +1,7 @@
 # PromptForge
 
+![PromptForge demo](https://raw.githubusercontent.com/Roy-Rebuffo/PromptForge/main/assets/Animation.gif)
+
 **Evaluate, version and improve your LLM prompts — without leaving VS Code.**
 
 PromptForge is a VS Code extension that brings a full prompt engineering workflow directly into your editor. Write a `.prompt` file, evaluate it with an AI judge, and get actionable improvement suggestions in seconds.

@@ -46,9 +46,15 @@ export interface PromptVersion {
 }
 
 export type WebviewMessage =
-  | { type: 'START_EVAL'; payload: { versionId: number; content: string; filePath: string } }
   | { type: 'EVAL_COMPLETE'; payload: DiagnosisResult }
-  | { type: 'IMPROVE_REQUEST'; payload: DiagnosisResult }
   | { type: 'IMPROVE_COMPLETE'; payload: ImprovementResult }
+  | { type: 'IMPROVE_REQUEST'; payload: DiagnosisResult; target_dim?: string }
   | { type: 'APPLY_IMPROVEMENT'; payload: { content: string } }
-  | { type: 'ERROR'; payload: { message: string } };
+  | { type: 'ERROR'; payload: { message: string } }
+  | { type: 'EVAL_ERROR'; payload: { message: string; canRetry: boolean } }
+  | { type: 'IMPROVE_ERROR'; payload: { message: string } }
+  | { type: 'MODELS_AVAILABLE'; payload: { models: string[]; current: string } }
+  | { type: 'SELECT_MODEL'; payload: { modelName: string } }
+  | { type: 'RETRY_EVAL'; payload: Record<string, never> }
+  | { type: 'CHANGE_MODEL_REQUEST'; payload: Record<string, never> }
+  | { type: 'WEBVIEW_READY'; payload: Record<string, never> };

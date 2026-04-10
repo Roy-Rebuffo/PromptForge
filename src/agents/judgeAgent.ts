@@ -66,19 +66,46 @@ REQUIRED JSON FORMAT:
   "completeness": { "score": <0-10>, "reasoning": "<your reasoning>", "improvement_hint": "<concrete suggestion>" }
 }`;
 
-function parseJudgeResponse(raw: string, promptContent: string, contextLabel: string, versionId: number): DiagnosisResult {
-  // Clean up response
+function extractJsonFromResponse(raw: string): string {
   let cleaned = raw.trim();
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.split('```').filter(s => s.trim() && !s.startsWith('json'))[0] ?? cleaned;
+
+  // Extract content from markdown code block (handles ```json ... ``` and ``` ... ```)
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1].trim();
   }
+
+  // Find the outermost JSON object
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}') + 1;
   if (start !== -1 && end > start) {
-    cleaned = cleaned.slice(start, end);
+    return cleaned.slice(start, end);
   }
 
-  const data = JSON.parse(cleaned);
+  return cleaned;
+}
+
+/** Remove trailing commas before } or ] — some models emit non-strict JSON. */
+function sanitizeJson(json: string): string {
+  return json.replace(/,(\s*[}\]])/g, '$1');
+}
+
+function parseJudgeResponse(raw: string, promptContent: string, contextLabel: string, versionId: number): DiagnosisResult {
+  const cleaned = extractJsonFromResponse(raw);
+
+  let data: any;
+  try {
+    data = JSON.parse(cleaned);
+  } catch {
+    // Second attempt: sanitize common model JSON quirks (trailing commas, etc.)
+    try {
+      data = JSON.parse(sanitizeJson(cleaned));
+    } catch {
+      console.error('PromptForge: Failed to parse judge response.');
+      console.error('Raw response:', raw);
+      throw new Error('Model returned an invalid response (could not parse JSON). Try a different model.');
+    }
+  }
 
   const dimensions: Record<string, DimensionDiagnosis> = {};
   const dimNames = ['coherence', 'precision', 'tone', 'safety', 'completeness'];
@@ -117,7 +144,7 @@ async function evaluateWithVscodeLm(
   contextLabel: string,
   versionId: number,
   token: vscode.CancellationToken,
-  systemPrompt: string  // añade este parámetro
+  systemPrompt: string
 ): Promise<DiagnosisResult> {
 
   const messages = [
@@ -127,14 +154,27 @@ async function evaluateWithVscodeLm(
     ),
   ];
 
-  const response = await model.sendRequest(messages, {}, token);
+  try {
+    const response = await model.sendRequest(messages, {}, token);
 
-  let raw = '';
-  for await (const chunk of response.text) {
-    raw += chunk;
+    let raw = '';
+    for await (const chunk of response.text) {
+      raw += chunk;
+    }
+
+    return parseJudgeResponse(raw, promptContent, contextLabel, versionId);
+
+  } catch (error: any) {
+    // Detect quota errors specifically
+    if (
+      error.name === 'ChatQuotaExceeded' ||
+      error.message?.includes('quota') ||
+      error.message?.includes('monthly chat messages')
+    ) {
+      throw new QuotaExceededError(model.family);
+    }
+    throw error;
   }
-
-  return parseJudgeResponse(raw, promptContent, contextLabel, versionId);
 }
 
 // Call judge using Groq API directly
@@ -216,4 +256,13 @@ export async function evaluatePrompt(
   }
 
   throw new Error('No valid model source available');
+}
+
+export class QuotaExceededError extends Error {
+  public readonly modelFamily: string;
+  constructor(modelFamily: string) {
+    super(`Quota exceeded for model: ${modelFamily}`);
+    this.name = 'QuotaExceededError';
+    this.modelFamily = modelFamily;
+  }
 }
